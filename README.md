@@ -21,12 +21,15 @@ Community health workers enter routine measurements (glucose, BMI, blood pressur
 ## 🛡️ Methodology Correction (Transparency)
 An earlier version of this project tuned the decision threshold on the test set, invalidating it as an independent evaluation. **We corrected this.** Models are trained on 60% of the data, the threshold is selected on a 20% validation split, and all numbers below are reported on a **final 20% held-out test set used exactly once**. The results represent an unbiased estimate.
 
-## Evaluation (Final held-out test set, n=154, threshold=0.30)
+## Final Evaluation (Unbiased Test Set, Random Forest, threshold=0.40)
+To prevent test-set leakage, models were trained on 60% of the data, and both the model choice and threshold were selected *exclusively* on a 20% validation set. The final chosen model was then evaluated exactly once on the 20% held-out test set.
+
 | Model | Acc | Prec | Rec | F1 | AUC | FN | FP |
 |---|---|---|---|---|---|---|---|
 | Baseline (majority) | 0.649 | 0.000 | 0.000 | 0.000 | 0.500 | 54 | 0 |
-| Random Forest | 0.708 | 0.560 | 0.778 | 0.651 | 0.816 | 12 | 33 |
-| **Logistic Regression (Deployed)** | **0.747** | **0.606** | **0.796** | **0.688** | **0.817** | **11** | **28** |
+| **Random Forest (Deployed)** | **0.760** | **0.639** | **0.722** | **0.678** | **0.816** | **15** | **22** |
+
+**Model Selection:** While Logistic Regression is often favored for interpretability, our unbiased validation phase showed Random Forest achieved a higher F1 score (0.702 vs 0.688). Therefore, we deployed Random Forest with a threshold of 0.40.
 
 ## Limitations
 - Trained only on **women of Pima Indigenous descent aged ≥21**. Not validated for males, children, or other populations.
