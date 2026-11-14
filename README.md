@@ -8,7 +8,7 @@ Built for the **Veritas AI International High School Hackathon 2026** — AI + H
 > It does not diagnose diabetes and does not replace a clinician.
 
 ## 🚀 Try it live
-**[Launch HealthSignal AI on HuggingFace Spaces](https://huggingface.co/spaces/Robel-Mekbib/healthsignal-ai)**
+**[Launch HealthSignal AI on HuggingFace Spaces](https://huggingface.co/spaces/robelm/healthsignal-ai)**
 *(Click the link above to test the live application in your browser)*
 
 ## What it does
