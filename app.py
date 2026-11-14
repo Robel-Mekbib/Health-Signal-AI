@@ -7,11 +7,23 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-MODEL = joblib.load("healthsignal_rf.pkl")
-EXPLAINER = shap.TreeExplainer(MODEL.named_steps["clf"])
+MODEL = joblib.load("healthsignal_logreg.pkl")
+IMPUTER = MODEL.named_steps["imputer"]
+SCALER = MODEL.named_steps["scaler"]
+CLF = MODEL.named_steps["clf"]
 FEATURES = ["Pregnancies","Glucose","BloodPressure","SkinThickness",
             "Insulin","BMI","DiabetesPedigreeFunction","Age"]
 THRESHOLD = 0.30
+
+# LinearExplainer needs a background sample. Use the median-imputed mean of training-like data.
+_bg = pd.DataFrame([{
+    "Pregnancies":3,"Glucose":120,"BloodPressure":70,"SkinThickness":23,
+    "Insulin":80,"BMI":32,"DiabetesPedigreeFunction":0.5,"Age":33
+}])[FEATURES]
+_bg_imp = IMPUTER.transform(_bg)
+_bg_scaled = SCALER.transform(_bg_imp)
+EXPLAINER = shap.LinearExplainer(CLF, _bg_scaled)
+
 
 def predict(pregnancies, glucose, blood_pressure, skin_thickness,
             insulin, bmi, pedigree, age):
@@ -25,6 +37,9 @@ def predict(pregnancies, glucose, blood_pressure, skin_thickness,
         return "⚠️ Blood pressure must be between 30–200 mmHg.", None, ""
     if pregnancies < 0 or pregnancies > 20:
         return "⚠️ Pregnancies must be between 0–20.", None, ""
+    if age < 21:
+        return ("⚠️ This prototype was trained on women aged ≥21. "
+                "Predictions for younger ages are outside the model's supported population.", None, "")
 
     row = pd.DataFrame([{
         "Pregnancies": pregnancies,
@@ -41,43 +56,44 @@ def predict(pregnancies, glucose, blood_pressure, skin_thickness,
     flagged = proba >= THRESHOLD
 
     if proba < 0.20:
-        band, color = "LOW estimated risk", "#16a34a"
+        band, color = "LOW estimated model score", "#16a34a"
     elif proba < THRESHOLD:
-        band, color = "MODERATE estimated risk", "#d97706"
+        band, color = "MODERATE estimated model score", "#d97706"
     else:
-        band, color = "ELEVATED estimated risk — recommend professional assessment", "#dc2626"
+        band, color = "ELEVATED estimated model score — recommend professional assessment", "#dc2626"
 
     result_md = f"""
 <div style="padding:18px;border-radius:12px;background:#f8fafc;
             border-left:6px solid {color};">
   <div style="font-size:13px;color:#64748b;text-transform:uppercase;
-              letter-spacing:1px;">Estimated risk</div>
+              letter-spacing:1px;">Estimated model score</div>
   <div style="font-size:28px;font-weight:600;color:{color};
-              margin:6px 0;">{proba*100:.1f}%</div>
+              margin:6px 0;">{proba*100:.1f}</div>
   <div style="font-size:15px;color:#0f172a;">{band}</div>
   <div style="font-size:12px;color:#334155;margin-top:10px;">
     Decision threshold: {THRESHOLD:.2f}. Screening flag:
     <b>{'YES' if flagged else 'NO'}</b>.
   </div>
+  <div style="font-size:11px;color:#64748b;margin-top:8px;">
+    This is a model score (0–100), not a clinical risk probability.
+    It is not validated for diagnostic use.
+  </div>
 </div>
 """
 
-    row_imp = MODEL.named_steps["imputer"].transform(row)
-    sv = EXPLAINER.shap_values(row_imp)
-    if isinstance(sv, list):
-        sv = sv[1]
-    elif sv.ndim == 3:
-        sv = sv[:, :, 1]
-    sv = sv[0]
+    row_imp = IMPUTER.transform(row)
+    row_scaled = SCALER.transform(row_imp)
+    sv = EXPLAINER.shap_values(row_scaled)[0]
 
     fig, ax = plt.subplots(figsize=(7, 3.2))
     order = np.argsort(np.abs(sv))
     colors = ["#dc2626" if v > 0 else "#2563eb" for v in sv[order]]
     ax.barh(np.array(FEATURES)[order], sv[order], color=colors)
     ax.axvline(0, color="#94a3b8", linewidth=0.8)
-    ax.set_xlabel("Contribution to risk (SHAP value)")
-    ax.set_title("Why this estimate? (red = raises risk, blue = lowers)",
-                 fontsize=10, loc="left")
+    ax.set_xlabel("Contribution to model score (SHAP value)")
+    ax.set_title("Why this score? (red = raises, blue = lowers). "
+                 "Feature contributions describe model behavior, not medical causes.",
+                 fontsize=9, loc="left")
     ax.spines[["top","right"]].set_visible(False)
     plt.tight_layout()
 
@@ -85,10 +101,13 @@ def predict(pregnancies, glucose, blood_pressure, skin_thickness,
     top3 = top.head(3)
     explain_lines = [
         f"**{feat}** — measured **{row.iloc[0][feat] if not pd.isna(row.iloc[0][feat]) else 'not provided'}**"
-        + (" (raises risk)" if sv[FEATURES.index(feat)] > 0 else " (lowers risk)")
+        + (" (raises score)" if sv[FEATURES.index(feat)] > 0 else " (lowers score)")
         for feat in top3.index
     ]
-    explanation_md = "### Top contributing factors\n\n" + "\n".join(f"- {l}" for l in explain_lines)
+    explanation_md = ("### Top contributing factors\n\n"
+                      + "\n".join(f"- {l}" for l in explain_lines)
+                      + "\n\n*These contributions describe how the model behaves. "
+                        "They are not medical causes.*")
 
     return result_md, fig, explanation_md
 
@@ -98,11 +117,17 @@ with gr.Blocks(title="HealthSignal AI") as demo:
     # HealthSignal AI
     ### Intelligent Insights for Earlier Health Awareness
 
-    Community health workers: enter routine measurements to estimate diabetes risk
-    and identify individuals who may benefit from professional assessment.
+    Community health workers: enter routine measurements to estimate diabetes
+    model score and identify individuals who may benefit from professional assessment.
 
     > ⚠️ **This project is a prototype and is not medical advice.**
     > It does not diagnose diabetes and does not replace a clinician.
+    """)
+    gr.Markdown("""
+    > ⚠️ **Trained on women of Pima Indigenous descent, aged ≥21, 1990s data.**
+    > **Not validated for males, children, or any other population group.**
+    > This tool is a **screening-awareness prototype for community health workers** —
+    > it does not replace professional assessment and is not a diagnostic device.
     """)
 
     with gr.Row():
@@ -116,7 +141,7 @@ with gr.Blocks(title="HealthSignal AI") as demo:
             bmi         = gr.Number(label="BMI", value=28.5)
             pedigree    = gr.Number(label="Diabetes Pedigree Function", value=0.5)
             age         = gr.Number(label="Age (years)", value=35)
-            btn = gr.Button("Estimate risk", variant="primary", size="lg")
+            btn = gr.Button("Estimate model score", variant="primary", size="lg")
 
         with gr.Column(scale=2):
             out_result = gr.HTML()
@@ -129,16 +154,17 @@ with gr.Blocks(title="HealthSignal AI") as demo:
 
     with gr.Accordion("About this model & its limitations", open=False):
         gr.Markdown("""
-        **Model:** Random Forest (300 trees), trained on the Pima Indians Diabetes dataset (768 samples).
-        **Features:** Pregnancies, Glucose, Blood Pressure, Skin Thickness, Insulin, BMI, Diabetes Pedigree Function, Age.
-        **Decision threshold:** 0.30 — chosen to prioritize recall (fewer missed cases) over precision, appropriate for a screening tool.
+        **Model:** Logistic Regression (interpretable, linear), trained on the Pima Indians Diabetes dataset (768 samples).
+        **Final test F1:** 0.688, recall 0.796, precision 0.606, FN 11, FP 28 (threshold 0.30).
+        **Why not Random Forest?** Logistic Regression outperformed RF on recall, precision, and F1 in the final held-out test set, and its coefficients are directly interpretable.
 
         **Limitations you must know:**
         - Trained on **women of Pima Indigenous descent** aged ≥21. Not validated for males, children, or other ethnic groups.
         - Data collected in the **1990s**; diagnostic criteria may have shifted.
-        - **Insulin and Skin Thickness are ~30–49% missing** in the source data — treat those contributions with caution.
-        - On the held-out test set the model missed **12 of 54 positive cases** (≈22% false negative rate). It is a screening aid, not a diagnosis.
-        - Performance differences across demographic subgroups were **not** evaluated — the dataset lacks that granularity.
+        - **Insulin and Skin Thickness are ~30–49% missing** in the source data — SHAP contributions from these features are unreliable.
+        - The model score is **not a calibrated clinical probability**.
+        - Performance varies by age band; subgroup sample sizes are too small for statistical conclusions.
+        - **This is a screening-awareness prototype, not a diagnostic tool.**
 
         **This project is a prototype and is not medical advice.**
         """)
