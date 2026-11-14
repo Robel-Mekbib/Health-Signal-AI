@@ -7,6 +7,11 @@ Built for the **Veritas AI International High School Hackathon 2026** — AI + H
 ## What it does
 Community health workers enter routine measurements (glucose, BMI, blood pressure, age, etc.). The model returns an **estimated diabetes risk probability**, an **explanation of which features drove the prediction** (SHAP), and **clear guidance to seek professional assessment** when risk is elevated.
 
+## 🚀 Try it live
+**[Launch HealthSignal AI on HuggingFace Spaces] git clone https://huggingface.co/spaces/robelm/healthsignal-ai**
+
+No installation needed. Runs in your browser.
+
 > ⚠️ **This project is a prototype and is not medical advice.**
 > It does not diagnose diabetes and does not replace a clinician.
 
@@ -39,6 +44,7 @@ Community health workers enter routine measurements (glucose, BMI, blood pressur
 * `training_and_evaluation.ipynb` — full training notebook
 - `REPORT.md` — evaluation report
 - `writeup.md` — one-page summary
+![HealthSignal AI demo](demo_screenshot.png)
 
 ## Citations
 - Dataset: Smith et al. (1988), *Using the ADAP learning algorithm to forecast the onset of diabetes mellitus.*
