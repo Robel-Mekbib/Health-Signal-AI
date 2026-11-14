@@ -7,10 +7,6 @@ Built for the **Veritas AI International High School Hackathon 2026** — AI + H
 > ⚠️ **This project is a prototype and is not medical advice.**
 > It does not diagnose diabetes and does not replace a clinician.
 
-## 🚀 Try it live
-**[Launch HealthSignal AI on HuggingFace Spaces](https://huggingface.co/spaces/robelm/a)**
-*(Click the link above to test the live application in your browser)*
-
 ## What it does
 Community health workers enter routine measurements (glucose, BMI, blood pressure, age, etc.). The model returns an **estimated model score (0–100)** — *not a clinical probability* — an **explanation of which features drove the prediction** (SHAP), and **clear guidance to seek professional assessment** when the score is elevated.
 
