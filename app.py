@@ -140,6 +140,7 @@ with gr.Blocks(title="HealthSignal AI") as demo:
     gr.Markdown("""
     > 🚨 **CRITICAL LIMITATION:** This model was trained exclusively on 768 records from **adult women of Pima Indigenous descent (Arizona, 1990s)**. 
     > It is **not validated** for males, children, the Ethiopian population, or any other demographic. 
+    > **If you enter measurements for a male, a child, or a person outside the Pima population, the resulting model score has no validated meaning** and should not be interpreted as a health assessment.
     > It is a research prototype and **not a diagnostic tool**. Do not use for clinical decisions.
     """)
 
