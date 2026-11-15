@@ -14,9 +14,9 @@ Community health workers enter routine measurements (glucose, BMI, blood pressur
 - **Dataset:** Pima Indians Diabetes (UCI / Kaggle, 768 samples, 8 features).
 - **Preprocessing:** Physiologically impossible zeros treated as missing; median imputation inside a sklearn Pipeline to prevent leakage.
 - **Models compared:** Majority-class baseline, Logistic Regression, Random Forest.
-- **Chosen model:** **Logistic Regression**. It outperformed Random Forest on the final held-out test set and offers greater interpretability.
-- **Explainability:** SHAP LinearExplainer, per-prediction.
-- **Decision threshold:** 0.30 — tuned on a validation set (not the test set) to prioritize recall for screening.
+- **Chosen model:** **Random Forest** (selected purely on validation set performance).
+- **Explainability:** SHAP TreeExplainer, per-prediction.
+- **Decision threshold:** 0.40 — tuned on a validation set (not the test set) to prioritize recall for screening.
 
 ## 🛡️ Methodology Correction (Transparency)
 An earlier version of this project tuned the decision threshold on the test set, invalidating it as an independent evaluation. **We corrected this.** Models are trained on 60% of the data, the threshold is selected on a 20% validation split, and all numbers below are reported on a **final 20% held-out test set used exactly once**. The results represent an unbiased estimate.
@@ -35,19 +35,20 @@ To prevent test-set leakage, models were trained on 60% of the data, and both th
 - Trained only on **women of Pima Indigenous descent aged ≥21**. Not validated for males, children, or other populations.
 - Data collected in the **1990s**.
 - **Insulin and Skin Thickness are ~30–49% missing** — SHAP contributions from these are unreliable.
-- At threshold 0.30 the model still misses **11 of 54 positive cases** (≈20% false negative rate).
+- At threshold 0.40 the model still misses **15 of 54 positive cases** (≈28% false negative rate).
 - The output is a **model score**, not a calibrated clinical risk.
 - **This project is a prototype and is not medical advice.**
 
 ## Files
 - `app.py` — Gradio web interface
-- `healthsignal_logreg.pkl` — trained Logistic Regression model
-- `Health_Signal_AI.ipynb` — full training and evaluation notebook
+- `healthsignal_final.pkl` — trained Random Forest model
+- `HealthSignal_ai.ipynb` — full training and evaluation notebook
 - `REPORT.md` — detailed evaluation report
 - `writeup.md` — one-page summary
 
 ## Citations
 - Dataset: Smith et al. (1988), *Using the ADAP learning algorithm to forecast the onset of diabetes mellitus.*
+- Dataset Source URL: `https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv`
 - SHAP: Lundberg & Lee (2017), NeurIPS.
 - Libraries: scikit-learn, pandas, NumPy, Gradio, matplotlib.
 - **AI Tools:** Claude (Anthropic) for architectural guidance, code review, and documentation drafting. All model design, threshold reasoning, and evaluation choices were made by the team.
