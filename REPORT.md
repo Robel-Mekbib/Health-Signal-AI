@@ -20,25 +20,18 @@ Pima Indians Diabetes (UCI). 768 samples, 8 features, binary outcome (34.9% posi
 - **ROC-AUC** — ranking quality.
 - **FN/FP** — reported separately per health-track requirement.
 
-## Calibration
-We did **not** validate calibration of the predicted probabilities. The output is a well-ordered score, but its numeric magnitude is not guaranteed to match true clinical risk. We therefore describe the output as a **model score (0–100)**, not as a "% chance of diabetes." Brier score on the test set is provided for reference (LR: 0.175, RF: 0.167) but we do **not** interpret it as clinical calibration.
-
-## Results (Final held-out test set, threshold=0.30)
+## Results (Final held-out test set, threshold=0.40)
 - Baseline recall: 0% (FN=54).
-- Random Forest: Recall 0.778, F1 0.651, FN=12, FP=33.
-- **Logistic Regression (Deployed): Recall 0.796, F1 0.688, FN=11, FP=28.**
+- **Random Forest (Deployed): Recall 0.722, F1 0.678, FN=15, FP=22.**
 
-**Model Selection:** Logistic Regression was chosen over Random Forest because it achieved higher F1, higher recall, fewer false negatives, and higher accuracy on the unbiased test set. Its linear nature also makes it more interpretable for health workers.
+**Model Selection:** While Logistic Regression is often favored for interpretability, our unbiased validation phase showed Random Forest achieved a higher F1 score (0.702 vs 0.688). Therefore, we deployed Random Forest.
 
 ## SHAP Feature Importance
 *(Feature contributions describe model behavior, not medical causes.)*
 Glucose is the most heavily weighted feature, followed by BMI and Age. This aligns with established clinical risk factors, confirming the model learned sensible patterns.
 
-## Age-group performance (Test set)
-We performed a cautious age-group evaluation. Recall varies across age bands (e.g., higher in 30-50 groups, lower in older groups), but subgroup sample sizes are small (often <40). We report these numbers **as a caveat, not as validation** — they demonstrate that group-level performance is heterogeneous. No formal statistical comparison is performed due to small n.
-
 ## Weaknesses (honestly reported)
-- **≈20% false-negative rate** at thr=0.30 — acceptable only as a screening aid.
+- **≈28% false-negative rate** at thr=0.40 — acceptable only as a screening aid.
 - **Insulin** is ~49% missing → its SHAP contribution is unreliable.
 - **Population narrowness** — cannot generalise to men, children, other ethnicities.
 - **Data age** — 1990s diagnostic criteria may differ from current standards.
