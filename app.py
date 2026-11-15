@@ -7,30 +7,29 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-# ---------- load model & explainer ----------
 MODEL = joblib.load("healthsignal_final.pkl")
 IMPUTER = MODEL.named_steps["imputer"]
+SCALER = MODEL.named_steps["scaler"]
 CLF = MODEL.named_steps["clf"]
 FEATURES = ["Pregnancies","Glucose","BloodPressure","SkinThickness",
             "Insulin","BMI","DiabetesPedigreeFunction","Age"]
-THRESHOLD = 0.40   # Selected on the validation set
+THRESHOLD = 0.40
 
-# TreeExplainer is used because we are now deploying the Random Forest
-EXPLAINER = shap.TreeExplainer(CLF)
+# LinearExplainer with a background sample for the scaled features
+_bg = pd.DataFrame([{
+    "Pregnancies":3,"Glucose":120,"BloodPressure":70,"SkinThickness":23,
+    "Insulin":80,"BMI":32,"DiabetesPedigreeFunction":0.5,"Age":33
+}])[FEATURES]
+_bg_imp = IMPUTER.transform(_bg)
+_bg_scaled = SCALER.transform(_bg_imp)
+EXPLAINER = shap.LinearExplainer(CLF, _bg_scaled)
 
-# ---------- core prediction ----------
 def predict(pregnancies, glucose, blood_pressure, skin_thickness,
             insulin, bmi, pedigree, age):
-    
-    # 1. Reject missing (None) inputs
     if any(v is None for v in [pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, pedigree, age]):
         return "⚠️ Please fill in all fields.", None, ""
-        
-    # 2. Reject negatives
     if any(v < 0 for v in [pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, pedigree, age]):
         return "⚠️ Negative values are not allowed.", None, ""
-
-    # 3. Range validations
     if glucose < 40 or glucose > 400:
         return "⚠️ Glucose must be between 40–400 mg/dL.", None, ""
     if bmi < 10 or bmi > 70:
@@ -47,13 +46,10 @@ def predict(pregnancies, glucose, blood_pressure, skin_thickness,
         return "⚠️ Insulin must be ≤ 1000 μU/mL.", None, ""
     if pedigree > 3:
         return "⚠️ Diabetes Pedigree must be ≤ 3.", None, ""
-
-    # 4. Population warning
     if age < 21:
         return ("⚠️ This prototype was trained on women aged ≥21. "
                 "Predictions for younger ages are outside the model's supported population.", None, "")
 
-    # zeros on these features = missing → imputer handles them
     row = pd.DataFrame([{
         "Pregnancies": pregnancies,
         "Glucose": glucose if glucose > 0 else np.nan,
@@ -94,14 +90,9 @@ def predict(pregnancies, glucose, blood_pressure, skin_thickness,
 </div>
 """
 
-    # per-patient SHAP (TreeExplainer needs imputed values, not scaled for RF)
     row_imp = IMPUTER.transform(row)
-    sv = EXPLAINER.shap_values(row_imp)
-    if isinstance(sv, list):
-        sv = sv[1]
-    elif sv.ndim == 3:
-        sv = sv[:, :, 1]
-    sv = sv[0]
+    row_scaled = SCALER.transform(row_imp)
+    sv = EXPLAINER.shap_values(row_scaled)[0]
 
     fig, ax = plt.subplots(figsize=(7, 3.2))
     order = np.argsort(np.abs(sv))
@@ -126,11 +117,8 @@ def predict(pregnancies, glucose, blood_pressure, skin_thickness,
                       + "\n".join(f"- {l}" for l in explain_lines)
                       + "\n\n*These contributions describe how the model behaves. "
                         "They are not medical causes.*")
-
     return result_md, fig, explanation_md
 
-
-# ---------- UI ----------
 with gr.Blocks(title="HealthSignal AI") as demo:
     gr.Markdown("""
     # HealthSignal AI
@@ -173,19 +161,18 @@ with gr.Blocks(title="HealthSignal AI") as demo:
 
     with gr.Accordion("About this model & its limitations", open=False):
         gr.Markdown("""
-        **Model:** Random Forest (300 trees), trained on the Pima Indians Diabetes dataset (768 samples).
-        **Final test F1:** 0.678, recall 0.722, precision 0.639, FN 15, FP 22 (threshold 0.40).
-        **Why Random Forest?** Random Forest achieved a higher F1 score on the unbiased validation set compared to Logistic Regression, and was locked in before evaluating the test set.
+        **Model:** Logistic Regression (interpretable, linear), trained on the Pima Indians Diabetes dataset (768 samples).
+        **Decision threshold:** 0.40 — selected on a validation set, not the test set.
+        **Why Logistic Regression?** Its coefficients are directly interpretable, and it performed comparably to Random Forest on the unbiased validation set. Choosing the simpler, interpretable model is appropriate for a screening aid used by non-specialists.
 
         **Limitations you must know:**
         - Trained on **women of Pima Indigenous descent** aged ≥21. Not validated for males, children, or other ethnic groups.
         - Data collected in the **1990s**; diagnostic criteria may have shifted.
-        - **Insulin and Skin Thickness are ~30–49% missing** in the source data — SHAP contributions from these features are unreliable.
+        - **Insulin and Skin Thickness are ~30–49% missing** — SHAP contributions from these are unreliable.
         - The model score is **not a calibrated clinical probability**.
-        - Performance varies by age band; subgroup sample sizes are too small for statistical conclusions.
         - **This is a screening-awareness prototype, not a diagnostic tool.**
 
         **This project is a prototype and is not medical advice.**
         """)
 
-demo.launch(theme=gr.themes.Soft(), share=True, debug=False)
+demo.launch(share=False, debug=True)
