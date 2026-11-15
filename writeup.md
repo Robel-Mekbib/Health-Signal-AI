@@ -7,8 +7,8 @@
 **AI core.** A Logistic Regression model trained on the Pima Indians Diabetes dataset (768 samples), compared against a majority-class baseline and Random Forest. We explain every prediction individually using SHAP.
 
 **Original contributions.**
-- **Rigorous validation:** We detected and corrected a data leakage issue from our initial threshold tuning. We rebuilt the pipeline with a strict train/validation/test split (60/20/20).
-- **Threshold tuning:** We tuned the decision threshold to 0.40 on the validation set to balance recall and precision.
+- **Rigorous validation:** An initial version of this project tuned the decision threshold directly on the test set, which artificially inflated the reported performance. We corrected this by using a strict 60/20/20 train/validation/test split: the model and threshold are now selected using only the validation set, and the test set is used exactly once.
+- **Threshold tuning:** We selected 0.40 as a deliberate precision-recall trade-off. Compared with 0.25, it improves precision and reduces false positives, but lowers recall and increases false negatives. This is a prototype design choice, not a clinically validated threshold.
 - **Per-prediction SHAP:** Health workers can see which input features most influenced the model's output. SHAP explains model behavior, not medical causes.
 - **Honest reporting:** We report False Negatives (FN) and False Positives (FP) separately, report the Brier score as an additional measure of prediction error (without claiming it establishes clinical calibration), and perform an age-group analysis.
 
