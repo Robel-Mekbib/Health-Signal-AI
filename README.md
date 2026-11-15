@@ -14,34 +14,33 @@ Community health workers enter routine measurements (glucose, BMI, blood pressur
 - **Dataset:** Pima Indians Diabetes (UCI / Kaggle, 768 samples, 8 features).
 - **Preprocessing:** Physiologically impossible zeros treated as missing; median imputation inside a sklearn Pipeline to prevent leakage.
 - **Models compared:** Majority-class baseline, Logistic Regression, Random Forest.
-- **Chosen model:** **Random Forest** (selected purely on validation set performance).
-- **Explainability:** SHAP TreeExplainer, per-prediction.
-- **Decision threshold:** 0.40 — tuned on a validation set (not the test set) to prioritize recall for screening.
+- **Chosen model:** **Logistic Regression** (selected on validation set; chosen for its interpretability in a clinical context).
+- **Explainability:** SHAP LinearExplainer, per-prediction.
+- **Decision threshold:** 0.40 — tuned on a validation set (not the test set) to balance recall and precision.
 
 ## 🛡️ Methodology Correction (Transparency)
 An earlier version of this project tuned the decision threshold on the test set, invalidating it as an independent evaluation. **We corrected this.** Models are trained on 60% of the data, the threshold is selected on a 20% validation split, and all numbers below are reported on a **final 20% held-out test set used exactly once**. The results represent an unbiased estimate.
 
-## Final Evaluation (Unbiased Test Set, Random Forest, threshold=0.40)
-To prevent test-set leakage, models were trained on 60% of the data, and both the model choice and threshold were selected *exclusively* on a 20% validation set. The final chosen model was then evaluated exactly once on the 20% held-out test set.
+## Final Evaluation (Unbiased Test Set, Logistic Regression, threshold=0.40)
 
-| Model | Acc | Prec | Rec | F1 | AUC | FN | FP |
-|---|---|---|---|---|---|---|---|
-| Baseline (majority) | 0.649 | 0.000 | 0.000 | 0.000 | 0.500 | 54 | 0 |
-| **Random Forest (Deployed)** | **0.760** | **0.639** | **0.722** | **0.678** | **0.816** | **15** | **22** |
+| Model | Acc | Prec | Rec | F1 | AUC | Brier | FN | FP |
+|---|---|---|---|---|---|---|---|---|
+| Baseline (majority) | 0.649 | 0.000 | 0.000 | 0.000 | 0.500 | 0.351 | 54 | 0 |
+| **Logistic Regression (Deployed)** | **0.721** | **0.604** | **0.593** | **0.598** | **0.817** | **0.175** | **22** | **21** |
 
-**Model Selection:** While Logistic Regression is often favored for interpretability, our unbiased validation phase showed Random Forest achieved a higher F1 score (0.702 vs 0.688). Therefore, we deployed Random Forest with a threshold of 0.40.
+**Model Selection:** While Random Forest achieved a slightly higher recall at lower thresholds, Logistic Regression offers superior interpretability (its coefficients map directly to feature influence) and a higher ROC-AUC, which is critical for a screening tool used by non-specialists. The threshold of 0.40 was selected on the validation set to balance recall (0.667) and precision (0.679) before touching the test set.
 
 ## Limitations
 - Trained only on **women of Pima Indigenous descent aged ≥21**. Not validated for males, children, or other populations.
 - Data collected in the **1990s**.
 - **Insulin and Skin Thickness are ~30–49% missing** — SHAP contributions from these are unreliable.
-- At threshold 0.40 the model still misses **15 of 54 positive cases** (≈28% false negative rate).
-- The output is a **model score**, not a calibrated clinical risk.
+- At threshold 0.40 the model misses **22 of 54 positive cases** (≈41% false negative rate).
+- The Brier score (0.175) indicates moderate calibration; the output is a **model score**, not a clinical probability.
 - **This project is a prototype and is not medical advice.**
 
 ## Files
 - `app.py` — Gradio web interface
-- `healthsignal_final.pkl` — trained Random Forest model
+- `healthsignal_final.pkl` — trained Logistic Regression model
 - `HealthSignal_ai.ipynb` — full training and evaluation notebook
 - `REPORT.md` — detailed evaluation report
 - `writeup.md` — one-page summary
