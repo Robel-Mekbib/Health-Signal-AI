@@ -12,9 +12,9 @@ Community health workers enter routine measurements (glucose, BMI, blood pressur
 
 ## How it works
 - **Dataset:** Pima Indians Diabetes (UCI / Kaggle, 768 samples, 8 features).
-- **Preprocessing:** Physiologically impossible zeros treated as missing; median imputation inside a sklearn Pipeline to prevent leakage.
+- **Preprocessing:** Physiologically impossible zeros treated as missing; median imputation and scaling inside a sklearn Pipeline to prevent leakage.
 - **Models compared:** Majority-class baseline, Logistic Regression, Random Forest.
-- **Chosen model:** **Logistic Regression** (selected on validation set; chosen for its interpretability in a clinical context).
+- **Chosen model:** **Logistic Regression** (selected for interpretability and clinical transparency).
 - **Explainability:** SHAP LinearExplainer, per-prediction.
 - **Decision threshold:** 0.40 — tuned on a validation set (not the test set) to balance recall and precision.
 
@@ -28,7 +28,14 @@ An earlier version of this project tuned the decision threshold on the test set,
 | Baseline (majority) | 0.649 | 0.000 | 0.000 | 0.000 | 0.500 | 0.351 | 54 | 0 |
 | **Logistic Regression (Deployed)** | **0.721** | **0.604** | **0.593** | **0.598** | **0.817** | **0.175** | **22** | **21** |
 
-**Model Selection:** While Random Forest achieved a slightly higher recall at lower thresholds, Logistic Regression offers superior interpretability (its coefficients map directly to feature influence) and a higher ROC-AUC, which is critical for a screening tool used by non-specialists. The threshold of 0.40 was selected on the validation set to balance recall (0.667) and precision (0.679) before touching the test set.
+**Model Selection:** On the validation set, Random Forest achieved a slightly higher F1 (0.702 vs 0.673). However, we deployed Logistic Regression because its coefficients map directly to feature influence, making it fully interpretable for non-specialist health workers. This transparency is critical for a screening aid.
+
+### Age-Group Performance (Test Set)
+- **Age 21–30:** n=85, Recall=0.438
+- **Age 30–40:** n=30, Recall=0.600
+- **Age 40–50:** n=24, Recall=0.833
+- **Age 50–100:** n=15, Recall=0.500
+*Subgroup sample sizes are small (often <40). We report these as a caveat, not as validation.*
 
 ## Limitations
 - Trained only on **women of Pima Indigenous descent aged ≥21**. Not validated for males, children, or other populations.
@@ -50,7 +57,7 @@ An earlier version of this project tuned the decision threshold on the test set,
 - Dataset Source URL: `https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv`
 - SHAP: Lundberg & Lee (2017), NeurIPS.
 - Libraries: scikit-learn, pandas, NumPy, Gradio, matplotlib.
-- **AI Tools:** Claude (Anthropic) for architectural guidance, code review, and documentation drafting. All model design, threshold reasoning, and evaluation choices were made by the team.
+- **AI Tools:** Claude (Anthropic) for architectural guidance, code review, and documentation drafting.
 
 ## Disclaimer
 **This project is a prototype and is not medical advice.**
