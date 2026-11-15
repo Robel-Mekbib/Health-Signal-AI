@@ -7,29 +7,40 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+# ---------- load model & explainer ----------
 MODEL = joblib.load("healthsignal_final.pkl")
 IMPUTER = MODEL.named_steps["imputer"]
 SCALER = MODEL.named_steps["scaler"]
 CLF = MODEL.named_steps["clf"]
 FEATURES = ["Pregnancies","Glucose","BloodPressure","SkinThickness",
             "Insulin","BMI","DiabetesPedigreeFunction","Age"]
-THRESHOLD = 0.40
+THRESHOLD = 0.40   # Selected on the validation set
 
-# LinearExplainer with a background sample for the scaled features
-_bg = pd.DataFrame([{
-    "Pregnancies":3,"Glucose":120,"BloodPressure":70,"SkinThickness":23,
-    "Insulin":80,"BMI":32,"DiabetesPedigreeFunction":0.5,"Age":33
-}])[FEATURES]
-_bg_imp = IMPUTER.transform(_bg)
-_bg_scaled = SCALER.transform(_bg_imp)
+# Load the SAME 100-row background used in the notebook
+_bg_scaled = joblib.load("shap_background.pkl")
 EXPLAINER = shap.LinearExplainer(CLF, _bg_scaled)
 
+# ---------- core prediction ----------
 def predict(pregnancies, glucose, blood_pressure, skin_thickness,
             insulin, bmi, pedigree, age):
+    
+    # 1. Reject missing (None) inputs
     if any(v is None for v in [pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, pedigree, age]):
         return "⚠️ Please fill in all fields.", None, ""
+        
+    # 2. Reject NaN or infinite values
+    if any(np.isnan(v) or np.isinf(v) for v in [pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, pedigree, age]):
+        return "⚠️ Invalid numeric value (NaN or infinite).", None, ""
+
+    # 3. Reject negatives
     if any(v < 0 for v in [pregnancies, glucose, blood_pressure, skin_thickness, insulin, bmi, pedigree, age]):
         return "⚠️ Negative values are not allowed.", None, ""
+
+    # 4. Enforce whole number for Pregnancies
+    if not float(pregnancies).is_integer():
+        return "⚠️ Pregnancies must be a whole number.", None, ""
+
+    # 5. Range validations
     if glucose < 40 or glucose > 400:
         return "⚠️ Glucose must be between 40–400 mg/dL.", None, ""
     if bmi < 10 or bmi > 70:
@@ -46,10 +57,13 @@ def predict(pregnancies, glucose, blood_pressure, skin_thickness,
         return "⚠️ Insulin must be ≤ 1000 μU/mL.", None, ""
     if pedigree > 3:
         return "⚠️ Diabetes Pedigree must be ≤ 3.", None, ""
+
+    # 6. Population warning
     if age < 21:
         return ("⚠️ This prototype was trained on women aged ≥21. "
                 "Predictions for younger ages are outside the model's supported population.", None, "")
 
+    # zeros on these features = missing → imputer handles them
     row = pd.DataFrame([{
         "Pregnancies": pregnancies,
         "Glucose": glucose if glucose > 0 else np.nan,
@@ -117,8 +131,11 @@ def predict(pregnancies, glucose, blood_pressure, skin_thickness,
                       + "\n".join(f"- {l}" for l in explain_lines)
                       + "\n\n*These contributions describe how the model behaves. "
                         "They are not medical causes.*")
+
     return result_md, fig, explanation_md
 
+
+# ---------- UI ----------
 with gr.Blocks(title="HealthSignal AI") as demo:
     gr.Markdown("""
     # HealthSignal AI
