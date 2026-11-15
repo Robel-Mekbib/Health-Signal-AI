@@ -9,8 +9,8 @@
 **Original contributions.**
 - **Rigorous validation:** We detected and corrected a data leakage issue from our initial threshold tuning. We rebuilt the pipeline with a strict train/validation/test split (60/20/20).
 - **Threshold tuning:** We tuned the decision threshold to 0.40 on the validation set to balance recall and precision.
-- **Per-prediction SHAP:** Health workers see *why* a score was generated.
-- **Honest reporting:** We report False Negatives (FN) and False Positives (FP) separately, report Brier score for calibration, and perform an age-group analysis.
+- **Per-prediction SHAP:** Health workers can see which input features most influenced the model's output. SHAP explains model behavior, not medical causes.
+- **Honest reporting:** We report False Negatives (FN) and False Positives (FP) separately, report the Brier score as an additional measure of prediction error (without claiming it establishes clinical calibration), and perform an age-group analysis.
 
 **Results (final held-out test set, threshold=0.40).**
 - Baseline: 64.9% acc, recall 0%.
